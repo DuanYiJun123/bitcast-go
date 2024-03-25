@@ -45,7 +45,7 @@ func TestBtree_Delete(t *testing.T) {
 	assert.True(t, res2)
 
 	res3 := bt.Put([]byte("aaa"), &data.LogRecordPos{
-		Fid:    33,
+		Fid:    22,
 		Offset: 33,
 	})
 	assert.True(t, res3)
