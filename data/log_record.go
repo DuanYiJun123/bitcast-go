@@ -18,7 +18,7 @@ type LogRecordPos struct {
 type LogRecord struct {
 	Key   []byte
 	Value []byte
-	Type  LogRecordType
+	Type  LogRecordType //枚举，用于记录数据的状态
 }
 
 // EncodeLogRecord 对LogRecord进行编码，返回字节数组以及长度

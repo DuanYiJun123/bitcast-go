@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-//BTree索引，主要封装Google btree的库
+// Btree index的一种实现：BTree索引，主要封装Google btree的库
 type Btree struct {
 	//在并发写操作时，可能不安全，所以需要一个加锁保护
 	tree *btree.BTree
@@ -14,7 +14,7 @@ type Btree struct {
 	lock *sync.RWMutex
 }
 
-//NewBTree初始化BTree索引结构
+// NewBTree NewBTree初始化BTree索引结构
 func NewBTree() *Btree {
 	return &Btree{
 		tree: btree.New(32),
