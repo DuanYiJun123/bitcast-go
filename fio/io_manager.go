@@ -16,3 +16,8 @@ type IOManager interface {
 	//关闭文件
 	Close() error
 }
+
+// NewIoManager 初始化IOManager 目前只支持FileIO
+func NewIoManager(fileName string) (IOManager, error) {
+	return NewFileIOManager(fileName)
+}

@@ -1,11 +1,18 @@
 package data
 
+import "encoding/binary"
+
 type LogRecordType = byte
 
 const (
 	LogRecordNormal LogRecordType = iota
 	LogRecordDeleted
 )
+
+//crc type keySize valueSize
+
+//4 + 1 + 5 + 5 = 15
+const maxLogRecordHeaderSize = binary.MaxVarintLen32*2 + 5
 
 //LogRecordPos 数据存储索引，主要是描述数据在磁盘上的位置
 type LogRecordPos struct {
@@ -24,4 +31,8 @@ type LogRecord struct {
 // EncodeLogRecord 对LogRecord进行编码，返回字节数组以及长度
 func EncodeLogRecord(record *LogRecord) ([]byte, int64) {
 	return nil, 0
+}
+
+func getLogRecordCRC(lr *LogRecord, header []byte) uint32 {
+	return 0
 }
