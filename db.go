@@ -91,6 +91,37 @@ func (db *DB) Put(key []byte, value []byte) error {
 	return nil
 }
 
+// Delete 根据Key删除对应的数据
+func (db *DB) Delete(key []byte) error {
+	//判断key的有效性
+	if len(key) == 0 {
+		return ErrKeyIsEmpty
+	}
+
+	//先检查key是否存在，如果不存在的话直接返回
+	if pos := db.index.Get(key); pos == nil {
+		return nil
+	}
+
+	//构造logRecord，标识其是被删除的
+	logRecord := &data.LogRecord{
+		Key:  key,
+		Type: data.LogRecordDeleted,
+	}
+
+	_, err := db.appendLogRecord(logRecord)
+	if err != nil {
+		return nil
+	}
+
+	//从内存索引当中将对应的key删除
+	ok := db.index.Delete(key)
+	if !ok {
+		return ErrIndexUpdateFailed
+	}
+	return nil
+}
+
 func (db *DB) Get(key []byte) ([]byte, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -269,11 +300,14 @@ func (db *DB) loadIndexFromDataFiles() error {
 				Fid:    fileId,
 				Offset: offset,
 			}
-
+			var ok bool
 			if logRecord.Type == data.LogRecordDeleted {
-				db.index.Delete(logRecord.Key)
+				ok = db.index.Delete(logRecord.Key)
 			} else {
-				db.index.Put(logRecord.Key, logRecordPos)
+				ok = db.index.Put(logRecord.Key, logRecordPos)
+			}
+			if !ok {
+				return ErrIndexUpdateFailed
 			}
 			//递增offset，下一次从新的位置获取
 			offset += size
