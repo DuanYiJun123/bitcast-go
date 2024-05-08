@@ -2,6 +2,7 @@ package bitcast_go
 
 import (
 	"bitcast-go/data"
+	"bitcast-go/err"
 	"bitcast-go/index"
 	"errors"
 	"io"
@@ -69,7 +70,7 @@ func checkOptions(options Options) error {
 func (db *DB) Put(key []byte, value []byte) error {
 	//判断key 是否有效
 	if len(key) == 0 {
-		return ErrKeyIsEmpty
+		return err.ErrKeyIsEmpty
 	}
 
 	//构造LogRecord结构体
@@ -86,7 +87,7 @@ func (db *DB) Put(key []byte, value []byte) error {
 	}
 	//更新内存索引
 	if ok := db.index.Put(key, pos); !ok {
-		return ErrIndexUpdateFailed
+		return err.ErrIndexUpdateFailed
 	}
 	return nil
 }
@@ -95,7 +96,7 @@ func (db *DB) Put(key []byte, value []byte) error {
 func (db *DB) Delete(key []byte) error {
 	//判断key的有效性
 	if len(key) == 0 {
-		return ErrKeyIsEmpty
+		return err.ErrKeyIsEmpty
 	}
 
 	//先检查key是否存在，如果不存在的话直接返回
@@ -117,7 +118,7 @@ func (db *DB) Delete(key []byte) error {
 	//从内存索引当中将对应的key删除
 	ok := db.index.Delete(key)
 	if !ok {
-		return ErrIndexUpdateFailed
+		return err.ErrIndexUpdateFailed
 	}
 	return nil
 }
@@ -127,14 +128,14 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 	defer db.mu.Unlock()
 	//判断key的有效性
 	if len(key) == 0 {
-		return nil, ErrKeyIsEmpty
+		return nil, err.ErrKeyIsEmpty
 	}
 	//从内存数据中取出key对应的索引信息
 	logRecordPos := db.index.Get(key)
 
 	//如果key不存在内存索引中，说明key不存在
 	if logRecordPos == nil {
-		return nil, ErrKeyNotFound
+		return nil, err.ErrKeyNotFound
 	}
 
 	//根据文件id找到对应的数据文件
@@ -147,7 +148,7 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 
 	//数据文件为空
 	if dataFile == nil {
-		return nil, ErrDataFileNotFound
+		return nil, err.ErrDataFileNotFound
 	}
 
 	//找到了对应的数据文件，并根据偏移量读取数据
@@ -157,7 +158,7 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 	}
 
 	if logRecord.Type == data.LogRecordDeleted {
-		return nil, ErrKeyNotFound
+		return nil, err.ErrKeyNotFound
 	}
 	return logRecord.Value, nil
 }
@@ -242,7 +243,7 @@ func (db *DB) loadDataFiles() error {
 			fileId, err := strconv.Atoi(splitNames[0])
 			//如果解析发生了错误，则数据目录存在其他文件，说明可能损坏掉了
 			if err != nil {
-				return ErrDataDirectoryCorrupte
+				return err.ErrDataDirectoryCorrupte
 			}
 			fileIds = append(fileIds, fileId)
 		}
@@ -307,7 +308,7 @@ func (db *DB) loadIndexFromDataFiles() error {
 				ok = db.index.Put(logRecord.Key, logRecordPos)
 			}
 			if !ok {
-				return ErrIndexUpdateFailed
+				return err.ErrIndexUpdateFailed
 			}
 			//递增offset，下一次从新的位置获取
 			offset += size

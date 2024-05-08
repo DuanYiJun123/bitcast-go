@@ -15,6 +15,9 @@ type IOManager interface {
 
 	//关闭文件
 	Close() error
+
+	//获取到对应文件大小
+	Size() (int64, error)
 }
 
 // NewIoManager 初始化IOManager 目前只支持FileIO

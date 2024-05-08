@@ -1,4 +1,4 @@
-package bitcast_go
+package err
 
 import "errors"
 

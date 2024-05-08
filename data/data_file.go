@@ -1,7 +1,7 @@
 package data
 
 import (
-	bitcast_go "bitcast-go"
+	bitcast_go "bitcast-go/err"
 	"bitcast-go/fio"
 	"fmt"
 	"hash/crc32"
@@ -35,8 +35,20 @@ func OpenDataFile(dirPath string, fileId uint32) (*DataFile, error) {
 
 // ReadLogRecord 根据offset 从数据文件中读取LogRecord
 func (df *DataFile) ReadLogRecord(offset int64) (*LogRecord, int64, error) {
+	//拿到当前文件的大小
+	fileSize, err := df.IoManager.Size()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	//如果offset+header最大的长度，已经超过了当前文件的长度，则只需要读取到文件的末尾即可
+	var headerBytes int64 = maxLogRecordHeaderSize
+	if offset+maxLogRecordHeaderSize > fileSize {
+		headerBytes = fileSize - offset
+	}
+
 	//读取Header信息
-	headerBuf, err := df.readNBytes(maxLogRecordHeaderSize, offset)
+	headerBuf, err := df.readNBytes(headerBytes, offset)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -94,6 +106,7 @@ func (df *DataFile) readNBytes(n int64, offset int64) (b []byte, err error) {
 	return
 }
 
+//logRecord 的头部信息
 type logRecordHeader struct {
 	crc        uint32        //crc校验值
 	recordType LogRecordType //标识LogRecord的类型
