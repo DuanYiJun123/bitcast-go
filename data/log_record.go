@@ -43,6 +43,8 @@ func EncodeLogRecord(logRecord *LogRecord) ([]byte, int64) {
 	var index = 5
 	//5字节之后，存储的是key和value的长度信息
 	//使用变长类型，节省空间
+	//binary.PutVarint函数会返回写入了多少个字节
+	//binary.PutVarint函数是用于将整数编码为可变长度字节序列的函数，可变长度字节序列是一种用于压缩整数的编码方式，它使用更少的字节来表示较小的整数，从而节省存储空间
 	index += binary.PutVarint(header[index:], int64(len(logRecord.Key)))
 	index += binary.PutVarint(header[index:], int64(len(logRecord.Value)))
 
@@ -57,11 +59,40 @@ func EncodeLogRecord(logRecord *LogRecord) ([]byte, int64) {
 
 	//对整个LogRecord的数据进行crc校验
 	crc := crc32.ChecksumIEEE(encBytes[4:])
+	//将crc的结果以小端字节序写入切片（一般arm或者x86的架构都是支持小端序的）
 	binary.LittleEndian.PutUint32(encBytes[:4], crc)
 
 	return encBytes, int64(size)
 }
 
 func getLogRecordCRC(lr *LogRecord, header []byte) uint32 {
-	return 0
+	if lr == nil {
+		return 0
+	}
+	crc := crc32.ChecksumIEEE(header[:])
+	crc32.Update(crc, crc32.IEEETable, lr.Key)
+	crc32.Update(crc, crc32.IEEETable, lr.Value)
+	return crc
+}
+
+func decodeLogRecordHeader(buf []byte) (*logRecordHeader, int64) {
+	if len(buf) <= 4 {
+		return nil, 0
+	}
+	header := &logRecordHeader{
+		crc:        binary.LittleEndian.Uint32(buf[:4]),
+		recordType: buf[4],
+	}
+	var index = 5
+
+	//Varint进行解码，返回长度和解码值，取出实际的 key size
+	keySize, n := binary.Varint(buf[index:])
+	header.keySize = uint32(keySize)
+	index += n
+
+	//取出实际的value size
+	valueSize, n := binary.Varint(buf[index:])
+	header.vauleSize = uint32(valueSize)
+	index += n
+	return header, int64(index)
 }
