@@ -116,5 +116,6 @@ type logRecordHeader struct {
 
 //对字节数组中个Header进行解码，并拿到header信息
 func decodeRecordHeader(buf []byte) (*logRecordHeader, int64) {
-	return nil, 0
+	header, i := decodeLogRecordHeader(buf)
+	return header, i
 }
