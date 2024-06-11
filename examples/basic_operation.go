@@ -7,16 +7,16 @@ import (
 
 func main() {
 	options := bitcast_go.DefaultOptions
-	options.DirPath = "/tmp/bitcast-go"
+	options.DirPath = "/Users/yijun.dyj/GolandProjects/bitcast-go/temp"
 	db, err := bitcast_go.Open(options)
 	if err != nil {
 		panic(err)
 	}
-	err = db.Put([]byte("name"), []byte("bitcask"))
-	if err != nil {
-		panic(err)
-	}
-	val, err := db.Get([]byte("name"))
+	//err = db.Put([]byte("hello"), []byte("okokokokok"))
+	//if err != nil {
+	//	panic(err)
+	//}
+	val, err := db.Get([]byte("hello"))
 	if err != nil {
 		panic(err)
 	}

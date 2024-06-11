@@ -92,11 +92,13 @@ func (df *DataFile) ReadLogRecord(offset int64) (*LogRecord, int64, error) {
 
 // Sync 持久化方法
 func (df *DataFile) Sync() error {
-	return nil
+	err := df.IoManager.Sync()
+	return err
 }
 
 func (df *DataFile) Write(buf []byte) error {
-	return nil
+	_, err := df.IoManager.Write(buf)
+	return err
 }
 
 //指定读xx个字节，并指定使用IoManager，返回该字节数组
