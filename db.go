@@ -112,7 +112,7 @@ func (db *DB) Delete(key []byte) error {
 
 	_, err := db.appendLogRecord(logRecord)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	//从内存索引当中将对应的key删除
