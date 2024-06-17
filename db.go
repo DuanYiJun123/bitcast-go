@@ -138,12 +138,16 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 		return nil, selferror.ErrKeyNotFound
 	}
 
+	return db.getVauleByPosition(logRecordPos)
+}
+
+func (db *DB) getVauleByPosition(pos *data.LogRecordPos) ([]byte, error) {
 	//根据文件id找到对应的数据文件
 	var dataFile *data.DataFile
-	if db.activeFile.FileId == logRecordPos.Fid {
+	if db.activeFile.FileId == pos.Fid {
 		dataFile = db.activeFile
 	} else {
-		dataFile = db.olderFiles[logRecordPos.Fid]
+		dataFile = db.olderFiles[pos.Fid]
 	}
 
 	//数据文件为空
@@ -152,7 +156,7 @@ func (db *DB) Get(key []byte) ([]byte, error) {
 	}
 
 	//找到了对应的数据文件，并根据偏移量读取数据
-	logRecord, _, err := dataFile.ReadLogRecord(logRecordPos.Offset)
+	logRecord, _, err := dataFile.ReadLogRecord(pos.Offset)
 	if err != nil {
 		return nil, err
 	}
