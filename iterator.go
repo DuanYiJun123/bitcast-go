@@ -5,6 +5,7 @@ import (
 	"bytes"
 )
 
+//面向用户的迭代器对象
 type Iterator struct {
 	indexIter index.Iterator //索引迭代器
 	db        *DB
