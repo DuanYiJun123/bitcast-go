@@ -96,6 +96,10 @@ func (df *DataFile) Sync() error {
 	return err
 }
 
+func (df *DataFile) Close() error {
+	return df.IoManager.Close()
+}
+
 func (df *DataFile) Write(buf []byte) error {
 	_, err := df.IoManager.Write(buf)
 	return err

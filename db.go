@@ -355,3 +355,36 @@ func (db *DB) Fold(fn func(key []byte, value []byte) bool) error {
 	}
 	return nil
 }
+
+func (db *DB) Close() error {
+	if db.activeFile == nil {
+		return nil
+	}
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	//关闭当前活跃文件
+	err := db.activeFile.Close()
+	if err != nil {
+		return err
+	}
+
+	//关闭旧的数据文件
+	for _, file := range db.olderFiles {
+		err := file.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+//持久化数据文件
+func (db *DB) Sync() error {
+	if db.activeFile == nil {
+		return nil
+	}
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	return db.activeFile.Sync()
+}
