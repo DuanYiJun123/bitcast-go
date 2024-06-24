@@ -10,6 +10,7 @@ type LogRecordType = byte
 const (
 	LogRecordNormal LogRecordType = iota
 	LogRecordDeleted
+	LogRecordTnxFinished
 )
 
 //crc type keySize valueSize
@@ -95,4 +96,10 @@ func decodeLogRecordHeader(buf []byte) (*logRecordHeader, int64) {
 	header.vauleSize = uint32(valueSize)
 	index += n
 	return header, int64(index)
+}
+
+//暂存的事务相关的数据
+type TransactionRecord struct {
+	Record *LogRecord
+	Pos    *LogRecordPos
 }

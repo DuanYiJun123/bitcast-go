@@ -9,4 +9,5 @@ var (
 	ErrDataFileNotFound      = errors.New("data file is not found")
 	ErrDataDirectoryCorrupte = errors.New("the database directory maybe corrupted")
 	ErrInvalidCRC            = errors.New("invalid crc value,log record maybe corrupted")
+	ErrExceedMaxBatchNum     = errors.New("exceed the max batch")
 )
