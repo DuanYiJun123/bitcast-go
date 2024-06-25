@@ -22,6 +22,7 @@ type DB struct {
 	olderFiles map[uint32]*data.DataFile //旧的数据文件，只能用于读
 	index      index.Indexer             //内存索引
 	seqNo      uint64                    //事务序列号，全局递增
+	isMerging  bool                      //是否正在Merge
 }
 
 //Open 打开bitcask存储引擎实例
@@ -339,6 +340,7 @@ func (db *DB) loadIndexFromDataFiles() error {
 					}
 					delete(transactionRecords, seqNo)
 				} else {
+					//如果事务还没完成提交 or 没有提交成功，则先暂存起来
 					logRecord.Key = realKey
 					transactionRecords[seqNo] = append(transactionRecords[seqNo], &data.TransactionRecord{
 						Record: logRecord,

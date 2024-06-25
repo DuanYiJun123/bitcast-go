@@ -10,6 +10,8 @@ import (
 )
 
 const DataFileNameSuffix = ".data"
+const HintFileName = "hint-index"
+const MergeFinishedFileName = "merge-finished"
 
 // DataFile 数据文件
 type DataFile struct {
@@ -21,6 +23,22 @@ type DataFile struct {
 // OpenDataFile 打开新的数据文件
 func OpenDataFile(dirPath string, fileId uint32) (*DataFile, error) {
 	fileName := filepath.Join(dirPath, fmt.Sprintf("%09d", fileId)+DataFileNameSuffix)
+	return newDataFile(fileName, fileId)
+}
+
+//打开Hint索引文件
+func OpenHintFile(dirPath string) (*DataFile, error) {
+	fileName := filepath.Join(dirPath, HintFileName)
+	return newDataFile(fileName, 0)
+}
+
+//OpenMergeFinishedFile 打开标识Merge完成的文件
+func OpenMergeFinishedFile(dirPath string) (*DataFile, error) {
+	fileName := filepath.Join(dirPath, MergeFinishedFileName)
+	return newDataFile(fileName, 0)
+}
+
+func newDataFile(fileName string, fileId uint32) (*DataFile, error) {
 	//初始化IOManager 管理器接口
 	ioManager, err := fio.NewIoManager(fileName)
 	if err != nil {
@@ -103,6 +121,17 @@ func (df *DataFile) Close() error {
 func (df *DataFile) Write(buf []byte) error {
 	_, err := df.IoManager.Write(buf)
 	return err
+}
+
+//写入索引信息到hint文件中
+func (df *DataFile) WriteHintRecord(key []byte, pos *LogRecordPos) error {
+	record := &LogRecord{
+		Key:   key,
+		Value: EncodeLogRecordPos(pos), //对pos进行编码
+	}
+	//再对record进行编码，然后写入
+	encRecord, _ := EncodeLogRecord(record)
+	return df.Write(encRecord)
 }
 
 //指定读xx个字节，并指定使用IoManager，返回该字节数组
