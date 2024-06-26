@@ -150,3 +150,109 @@ func (db *DB) getMergePath() string {
 	base := path.Base(db.option.DirPath)
 	return filepath.Join(dir, base+mergeDirName)
 }
+
+//加载merge数据目录
+func (db *DB) loadMergeFiles() error {
+	mergePath := db.getMergePath()
+	//merge目标不存在的话直接返回
+	if _, err := os.Stat(mergePath); os.IsNotExist(err) {
+		return nil
+	}
+	defer func() {
+		_ = os.RemoveAll(mergePath)
+	}()
+	dirEntries, err := os.ReadDir(mergePath)
+	if err != nil {
+		return err
+	}
+	//查找标识merge完成的文件，判断Merge是否处理完了
+	var mergeFinished bool
+	var mergeFileNames []string //merge目录下所有的文件名
+	for _, entry := range dirEntries {
+		if entry.Name() == data.MergeFinishedFileName {
+			mergeFinished = true //merge处理完成的标识
+		}
+		mergeFileNames = append(mergeFileNames, entry.Name())
+	}
+
+	//如果没有merge处理完，则直接返回
+	if !mergeFinished {
+		return nil
+	}
+
+	nonMergeFileId, err := db.getNonMergeFileId(mergePath)
+	if err != nil {
+		return nil
+	}
+
+	//删除旧的数据文件
+	var fileId uint32 = 0
+	for ; fileId < nonMergeFileId; fileId++ {
+		fileName := data.GetDataFileName(db.option.DirPath, fileId)
+		if _, err := os.Stat(fileName); err == nil {
+			err := os.Remove(fileName)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	//将新的数据文件移动到数据目录中
+	for _, fileName := range mergeFileNames {
+		srcPath := filepath.Join(mergePath, fileName)
+		destPath := filepath.Join(db.option.DirPath, fileName)
+		err := os.Rename(srcPath, destPath)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (db *DB) getNonMergeFileId(dirPath string) (uint32, error) {
+	mergeFinishedFile, err := data.OpenMergeFinishedFile(dirPath)
+	if err != nil {
+		return 0, err
+	}
+	record, _, err := mergeFinishedFile.ReadLogRecord(0)
+	if err != nil {
+		return 0, err
+	}
+	nonMergeFileId, err := strconv.Atoi(string(record.Value))
+	if err != nil {
+		return 0, err
+	}
+	return uint32(nonMergeFileId), nil
+}
+
+//从hint文件中加载索引
+func (db *DB) loadIndexFromHintFile() error {
+	//查看hint索引文件是否存在
+	hintFileName := filepath.Join(db.option.DirPath, data.HintFileName)
+	_, err := os.Stat(hintFileName)
+	if err != nil {
+		return err
+	}
+	//打开hint索引文件
+	hintFile, err := data.OpenHintFile(hintFileName)
+	if err != nil {
+		return err
+	}
+
+	//读取文件中的索引
+	var offset int64 = 0
+	for {
+		logRecord, size, err := hintFile.ReadLogRecord(offset)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+		//解码拿到实际的位置索引
+		pos := data.DecodeLogRecordPos(logRecord.Value)
+		db.index.Put(logRecord.Key, pos)
+		offset += size
+	}
+	return nil
+}
