@@ -327,7 +327,7 @@ func (db *DB) loadIndexFromDataFiles() error {
 	}
 
 	//暂存事务数据
-	transactionRecords := make(map[uint64][]*data.TransactionRecord)
+	transactionRecords := make(map[uint64][]*data.TransactionRecord) //这是一个以seqNo为key的list,value对应的是事务的记录
 	var currentSeqNo uint64 = nonTransactionSeqNo
 
 	//遍历所有文件的id，处理文件中的记录

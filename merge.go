@@ -61,7 +61,7 @@ func (db *DB) Merge() error {
 
 	mergePath := db.getMergePath()
 	//如果目录存在，说明发生过merge，将其删掉
-	if _, err := os.Stat(mergePath); err != nil {
+	if _, err := os.Stat(mergePath); err == nil {
 		if err := os.RemoveAll(mergePath); err != nil {
 			return err
 		}
