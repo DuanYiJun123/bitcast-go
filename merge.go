@@ -172,6 +172,9 @@ func (db *DB) loadMergeFiles() error {
 		if entry.Name() == data.MergeFinishedFileName {
 			mergeFinished = true //merge处理完成的标识
 		}
+		if entry.Name() == data.SeqNoFileName { //如果是事务序列号文件，无需merge过去
+			continue
+		}
 		mergeFileNames = append(mergeFileNames, entry.Name())
 	}
 

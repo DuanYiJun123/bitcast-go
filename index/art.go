@@ -57,6 +57,10 @@ func (art *AdaptiveRadixTree) Size() int {
 	return size
 }
 
+func (art *AdaptiveRadixTree) Close() error {
+	return nil
+}
+
 //Art 索引迭代器
 type artIterator struct {
 	currIndex int     //当前遍历的下标位置
