@@ -11,6 +11,9 @@ type Options struct {
 	//每次写入数据是否持久化
 	SyncWrites bool
 
+	//累计写到多少字节进行持久化
+	BytesPerSync uint
+
 	//索引类型
 	IndexerType IndexerType
 }
@@ -40,6 +43,7 @@ var DefaultOptions = Options{
 	DirPath:      os.TempDir(),
 	DataFileSize: 256 * 1024 * 1024,
 	SyncWrites:   false,
+	BytesPerSync: 0,
 	IndexerType:  BTree,
 }
 

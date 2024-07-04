@@ -5,6 +5,8 @@ import (
 	"bitcast-go/index"
 	"bitcast-go/selferror"
 	"errors"
+	"fmt"
+	"github.com/gofrs/flock"
 	"io"
 	"os"
 	"path/filepath"
@@ -15,6 +17,7 @@ import (
 )
 
 const seqNoKey = "seq.no"
+const fileLockName = "flock"
 
 //DB bitcast存储引擎实例
 type DB struct {
@@ -28,6 +31,8 @@ type DB struct {
 	isMerging       bool                      //是否正在Merge
 	seqNoFileExists bool                      //存储事务序列号文件是否存在
 	isInitial       bool                      //是否是第一次初始化此数据目录
+	fileLock        *flock.Flock              //文件锁，保证多进程之间互斥
+	bytesWrite      uint                      //当前写了多少字节的累计值
 }
 
 //Open 打开bitcask存储引擎实例
@@ -47,6 +52,16 @@ func Open(options Options) (*DB, error) {
 		}
 	}
 
+	//判断当前数据目录是否正在使用
+	fileLock := flock.New(filepath.Join(options.DirPath, fileLockName)) //拿到文件锁
+	hold, err := fileLock.TryLock()
+	if err != nil {
+		return nil, err
+	}
+	if !hold {
+		return nil, selferror.ErrDatabaseIsUsing
+	}
+
 	entries, err := os.ReadDir(options.DirPath)
 	if err != nil {
 		return nil, err
@@ -63,6 +78,7 @@ func Open(options Options) (*DB, error) {
 		olderFiles: make(map[uint32]*data.DataFile),
 		index:      index.NewIndexer(options.IndexerType, options.DirPath, options.SyncWrites),
 		isInitial:  isInitial,
+		fileLock:   fileLock,
 	}
 
 	//加载merge目录
@@ -255,11 +271,19 @@ func (db *DB) appendLogRecord(record *data.LogRecord) (*data.LogRecordPos, error
 	if err := db.activeFile.Write(enRecord); err != nil {
 		return nil, err
 	}
-	//根据用户配置决定是否持久化
-	if db.option.SyncWrites {
-		if err := db.activeFile.Sync(); err != nil {
-			return nil, err
 
+	db.bytesWrite += uint(size)
+	//根据用户配置决定是否持久化
+	var needSync = db.option.SyncWrites
+	if !needSync && db.option.BytesPerSync > 0 && db.bytesWrite >= db.option.BytesPerSync { //如果该开关没有打开，再判断累计的字节是否超过
+		needSync = true
+	}
+	if needSync {
+		if err := db.activeFile.Sync(); err != nil {
+			if db.bytesWrite > 0 {
+				db.bytesWrite = 0
+			}
+			return nil, err
 		}
 	}
 
@@ -472,6 +496,13 @@ func (db *DB) Fold(fn func(key []byte, value []byte) bool) error {
 }
 
 func (db *DB) Close() error {
+	defer func() {
+		err := db.fileLock.Unlock()
+		if err != nil {
+			panic(fmt.Sprintf("failed to unlock the directory,%v", err))
+		}
+	}()
+
 	if db.activeFile == nil {
 		return nil
 	}
