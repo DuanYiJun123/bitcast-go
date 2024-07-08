@@ -1,19 +1,20 @@
 package data
 
 import (
+	"bitcast-go/fio"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
 )
 
 func TestOpenDataFile(t *testing.T) {
-	dataFile1, err := OpenDataFile(os.TempDir(), 0)
+	dataFile1, err := OpenDataFile(os.TempDir(), 0, fio.StandardFio)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile1)
 }
 
 func TestDataFile_ReadLogRecord(t *testing.T) {
-	dataFile, err := OpenDataFile(os.TempDir(), 222)
+	dataFile, err := OpenDataFile(os.TempDir(), 222, fio.StandardFio)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 

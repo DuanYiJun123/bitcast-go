@@ -2,6 +2,7 @@ package bitcast_go
 
 import (
 	"bitcast-go/data"
+	"bitcast-go/fio"
 	"bitcast-go/index"
 	"bitcast-go/selferror"
 	"errors"
@@ -103,6 +104,13 @@ func Open(options Options) (*DB, error) {
 		//从数据文件中加载索引
 		if err := db.loadIndexFromDataFiles(); err != nil {
 			return nil, err
+		}
+		//重置IO类型为标准文件IO
+		if db.option.MMapAtStartup {
+			err := db.resetIoType()
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -303,7 +311,7 @@ func (db *DB) setActiveDataFile() error {
 		initialFileId = db.activeFile.FileId + 1
 	}
 	//打开新的数据文件
-	dataFile, err := data.OpenDataFile(db.option.DirPath, initialFileId)
+	dataFile, err := data.OpenDataFile(db.option.DirPath, initialFileId, fio.StandardFio)
 	if err != nil {
 		return err
 	}
@@ -341,7 +349,11 @@ func (db *DB) loadDataFiles() error {
 
 	//遍历每个文件Id，打开对应的数据文件
 	for i, fid := range fileIds {
-		dataFile, err := data.OpenDataFile(db.option.DirPath, uint32(fid))
+		ioType := fio.StandardFio
+		if db.option.MMapAtStartup {
+			ioType = fio.MemoryMap
+		}
+		dataFile, err := data.OpenDataFile(db.option.DirPath, uint32(fid), ioType)
 		if err != nil {
 			return err
 		}
@@ -577,5 +589,23 @@ func (db *DB) loadSeqNo() error {
 	}
 	db.seqNo = seqNo
 	db.seqNoFileExists = true
+	return nil
+}
+
+//重置数据文件的IO类型为标准文件IO,将活跃文件，旧的数据文件都进行一次重置
+func (db *DB) resetIoType() error {
+	if db.activeFile == nil {
+		return nil
+	}
+	err := db.activeFile.SetIoManager(db.option.DirPath, fio.StandardFio)
+	if err != nil {
+		return err
+	}
+	for _, dataFile := range db.olderFiles {
+		err := dataFile.SetIoManager(db.option.DirPath, fio.StandardFio)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }

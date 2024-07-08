@@ -22,27 +22,27 @@ type DataFile struct {
 }
 
 // OpenDataFile 打开新的数据文件
-func OpenDataFile(dirPath string, fileId uint32) (*DataFile, error) {
+func OpenDataFile(dirPath string, fileId uint32, ioType fio.FileIOType) (*DataFile, error) {
 	fileName := GetDataFileName(dirPath, fileId)
-	return newDataFile(fileName, fileId)
+	return newDataFile(fileName, fileId, ioType)
 }
 
 //打开Hint索引文件
 func OpenHintFile(dirPath string) (*DataFile, error) {
 	fileName := filepath.Join(dirPath, HintFileName)
-	return newDataFile(fileName, 0)
+	return newDataFile(fileName, 0, fio.StandardFio)
 }
 
 //OpenMergeFinishedFile 打开标识Merge完成的文件
 func OpenMergeFinishedFile(dirPath string) (*DataFile, error) {
 	fileName := filepath.Join(dirPath, MergeFinishedFileName)
-	return newDataFile(fileName, 0)
+	return newDataFile(fileName, 0, fio.StandardFio)
 }
 
 // OpenSeqNoFile 打开事务序列号的文件
 func OpenSeqNoFile(dirPath string) (*DataFile, error) {
 	fileName := filepath.Join(dirPath, SeqNoFileName)
-	return newDataFile(fileName, 0)
+	return newDataFile(fileName, 0, fio.StandardFio)
 }
 
 func GetDataFileName(dirPath string, fileId uint32) string {
@@ -50,9 +50,9 @@ func GetDataFileName(dirPath string, fileId uint32) string {
 	return fileName
 }
 
-func newDataFile(fileName string, fileId uint32) (*DataFile, error) {
+func newDataFile(fileName string, fileId uint32, ioType fio.FileIOType) (*DataFile, error) {
 	//初始化IOManager 管理器接口
-	ioManager, err := fio.NewIoManager(fileName)
+	ioManager, err := fio.NewIoManager(fileName, ioType)
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +128,19 @@ func (df *DataFile) Sync() error {
 
 func (df *DataFile) Close() error {
 	return df.IoManager.Close()
+}
+
+func (df *DataFile) SetIoManager(dirPath string, ioType fio.FileIOType) error {
+	err := df.IoManager.Close()
+	if err != nil {
+		return err
+	}
+	ioManager, err := fio.NewIoManager(GetDataFileName(dirPath, df.FileId), ioType)
+	if err != nil {
+		return err
+	}
+	df.IoManager = ioManager
+	return nil
 }
 
 func (df *DataFile) Write(buf []byte) error {

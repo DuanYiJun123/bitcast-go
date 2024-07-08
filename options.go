@@ -16,6 +16,9 @@ type Options struct {
 
 	//索引类型
 	IndexerType IndexerType
+
+	//启动时是否需要使用mmap内存映射
+	MMapAtStartup bool
 }
 
 type IndexerType = int8
@@ -40,11 +43,12 @@ type IteratorOptions struct {
 }
 
 var DefaultOptions = Options{
-	DirPath:      os.TempDir(),
-	DataFileSize: 256 * 1024 * 1024,
-	SyncWrites:   false,
-	BytesPerSync: 0,
-	IndexerType:  BTree,
+	DirPath:       os.TempDir(),
+	DataFileSize:  256 * 1024 * 1024,
+	SyncWrites:    false,
+	BytesPerSync:  0,
+	IndexerType:   BTree,
+	MMapAtStartup: true,
 }
 
 var DefaultIteratorOptions = IteratorOptions{
