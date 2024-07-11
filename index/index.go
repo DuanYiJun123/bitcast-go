@@ -8,13 +8,13 @@ import (
 
 type Indexer interface {
 	//向索引中存储key 对应的数据位置信息
-	Put(key []byte, pos *data.LogRecordPos) bool
+	Put(key []byte, pos *data.LogRecordPos) *data.LogRecordPos
 
 	//根据key 取出对应的索引位置信息
 	Get(key []byte) *data.LogRecordPos
 
 	//根据Key 删除对应的位置信息
-	Delete(key []byte) bool
+	Delete(key []byte) (*data.LogRecordPos, bool)
 
 	//索引中存在的数据量
 	Size() int

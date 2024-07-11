@@ -3,6 +3,7 @@ package bitcast_go
 import (
 	"bitcast-go/data"
 	"bitcast-go/selferror"
+	"bitcast-go/utils"
 	"io"
 	"os"
 	"path"
@@ -26,6 +27,29 @@ func (db *DB) Merge() error {
 		db.mu.Unlock()
 		return selferror.ErrMergeIsProgress
 	}
+
+	//查看可以merge的数据量是否达到了阈值
+	totalSize, err := utils.DirSize(db.option.DirPath)
+	if err != nil {
+		db.mu.Unlock()
+		return err
+	}
+	if float32(db.reclaimSize)/float32(totalSize) < db.option.DataFileMergeRatio {
+		db.mu.Unlock()
+		return selferror.ErrMergeRatioUnreached
+	}
+
+	//查看剩余的空间容量是否可以容纳merge之后的数据量
+	availableDiskSize, err := utils.AvailableDiskSize()
+	if err != nil {
+		db.mu.Unlock()
+		return err
+	}
+	if uint64(totalSize-db.reclaimSize) >= availableDiskSize {
+		db.mu.Unlock()
+		return selferror.ErrNoEnoughSpaceForMerge
+	}
+
 	//否则，将该标识位置为true
 	db.isMerging = true
 	defer func() {
@@ -173,6 +197,9 @@ func (db *DB) loadMergeFiles() error {
 			mergeFinished = true //merge处理完成的标识
 		}
 		if entry.Name() == data.SeqNoFileName { //如果是事务序列号文件，无需merge过去
+			continue
+		}
+		if entry.Name() == fileLockName {
 			continue
 		}
 		mergeFileNames = append(mergeFileNames, entry.Name())
