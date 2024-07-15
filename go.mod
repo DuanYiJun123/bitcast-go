@@ -1,6 +1,8 @@
 module bitcast-go
 
-go 1.18
+go 1.21.0
+
+toolchain go1.21.12
 
 require (
 	github.com/gofrs/flock v0.12.0

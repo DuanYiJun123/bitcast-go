@@ -21,7 +21,7 @@ import (
 const seqNoKey = "seq.no"
 const fileLockName = "flock"
 
-//DB bitcast存储引擎实例
+// DB bitcast存储引擎实例
 type DB struct {
 	option          Options                   //配置信息
 	mu              *sync.RWMutex             //锁
@@ -38,7 +38,7 @@ type DB struct {
 	reclaimSize     int64                     //表示有多少数据是无效的
 }
 
-//存储引擎统计信息
+// 存储引擎统计信息
 type Stat struct {
 	KeyNum          uint  //key的总数量
 	DataFileNum     uint  //数据文件的数量
@@ -46,7 +46,7 @@ type Stat struct {
 	DiskSize        int64 //数据目录所占磁盘空间的大小
 }
 
-//返回数据库的相关统计信息
+// 返回数据库的相关统计信息
 func (db *DB) Stat() *Stat {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
@@ -67,7 +67,7 @@ func (db *DB) Stat() *Stat {
 	}
 }
 
-//Open 打开bitcask存储引擎实例
+// Open 打开bitcask存储引擎实例
 func Open(options Options) (*DB, error) {
 	//对用户传入的配置项进行校验
 	if err := checkOptions(options); err != nil {
@@ -176,7 +176,14 @@ func checkOptions(options Options) error {
 	return nil
 }
 
-//写入Key/Value 数据 key不能为空
+func (db *DB) BackUp(dir string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	return utils.CopyDir(db.option.DirPath, dir, []string{fileLockName})
+}
+
+// 写入Key/Value 数据 key不能为空
 func (db *DB) Put(key []byte, value []byte) error {
 	//判断key 是否有效
 	if len(key) == 0 {
@@ -282,14 +289,14 @@ func (db *DB) getVauleByPosition(pos *data.LogRecordPos) ([]byte, error) {
 	return logRecord.Value, nil
 }
 
-//追加写数据到活跃文件中,带锁
+// 追加写数据到活跃文件中,带锁
 func (db *DB) appendLogRecordWithLock(record *data.LogRecord) (*data.LogRecordPos, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 	return db.appendLogRecord(record)
 }
 
-//追加写数据到活跃文件中
+// 追加写数据到活跃文件中
 func (db *DB) appendLogRecord(record *data.LogRecord) (*data.LogRecordPos, error) {
 	//判断当前活跃数据文件是否存在，因为数据库在没有写入的时候是没有文件生成的
 	//如果为空，则初始化数据文件
@@ -359,7 +366,7 @@ func (db *DB) setActiveDataFile() error {
 	return nil
 }
 
-//从磁盘中加载数据文件
+// 从磁盘中加载数据文件
 func (db *DB) loadDataFiles() error {
 	dirEntries, err := os.ReadDir(db.option.DirPath)
 	if err != nil {
@@ -406,8 +413,8 @@ func (db *DB) loadDataFiles() error {
 	return nil
 }
 
-//从数据文件中加载索引
-//遍历文件中的所有记录，并更新到内存索引中
+// 从数据文件中加载索引
+// 遍历文件中的所有记录，并更新到内存索引中
 func (db *DB) loadIndexFromDataFiles() error {
 	//没有文件，说明数据库为空，直接返回
 	if len(db.fileIds) == 0 {
@@ -517,7 +524,7 @@ func (db *DB) loadIndexFromDataFiles() error {
 	return nil
 }
 
-//获取到所有的key
+// 获取到所有的key
 func (db *DB) ListKeys() [][]byte {
 	iterator := db.index.Iterator(false)
 	keys := make([][]byte, db.index.Size())
@@ -530,7 +537,7 @@ func (db *DB) ListKeys() [][]byte {
 	return keys
 }
 
-//获取所有数据，并执行用户指定的操作,函数返回false,则终止遍历
+// 获取所有数据，并执行用户指定的操作,函数返回false,则终止遍历
 func (db *DB) Fold(fn func(key []byte, value []byte) bool) error {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
@@ -603,7 +610,7 @@ func (db *DB) Close() error {
 	return nil
 }
 
-//持久化数据文件
+// 持久化数据文件
 func (db *DB) Sync() error {
 	if db.activeFile == nil {
 		return nil
@@ -633,7 +640,7 @@ func (db *DB) loadSeqNo() error {
 	return nil
 }
 
-//重置数据文件的IO类型为标准文件IO,将活跃文件，旧的数据文件都进行一次重置
+// 重置数据文件的IO类型为标准文件IO,将活跃文件，旧的数据文件都进行一次重置
 func (db *DB) resetIoType() error {
 	if db.activeFile == nil {
 		return nil
